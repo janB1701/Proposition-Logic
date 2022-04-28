@@ -1,0 +1,245 @@
+import sys
+
+def selectClauses(combinations):
+    for par in combinations.copy():
+        c1c2 = par.split(",")
+        odabir1 = c1c2[0]
+        odabir2 = c1c2[1]
+        combinations.pop(par)
+        return odabir1,odabir2
+
+    return "",""
+
+def resolve(c1,c2,pocetne,resolvents):
+    c1_literali = c1.split(" v ")
+    c2_literali = c2.split(" v ")
+    c1_c2= []
+    res = ""
+    if (len(c2_literali) == 1) and (len(c1_literali) == 1):
+        if c1.lstrip("~") in c2_literali:
+            if "~" in c1:
+                return "NIL"
+        elif ("~"+c1) in c2_literali:
+            return "NIL"
+        else:
+            c1_c2 = c1_literali + c2_literali
+            res = " v ".join(c1_c2)
+
+    else:
+        c1_c2 = c1_literali + c2_literali
+
+        #micanje
+        for lit in c1_c2.copy():
+            if "~" in lit:
+                if lit.lstrip("~") in c1_c2:
+                    c1_c2.remove(lit)
+                    c1_c2.remove(lit.lstrip("~"))
+                    break
+        res = " v ".join(c1_c2)
+
+    #tautology
+    for lit in c1_c2:
+        if "~" in lit:
+            if lit.lstrip("~") in c1_c2:
+                return "tautology"
+
+    #factorization
+    factorize=False
+    for lit in c1_c2:
+        if c1_c2.count(lit) > 1:
+            factorize=True
+            break
+    if factorize:
+        set_lit_res = list(set(c1_c2))
+        res = " v ".join(set_lit_res)
+
+    res_lit = res.split(" v ")
+
+    #pokrivenost
+    for klauz in pocetne.copy():
+        klauz_lit = klauz.split(" v ")
+        if(all(x in res_lit for x in klauz_lit)):
+            return "visited"
+        if(all(x in klauz_lit for x in res_lit)):
+            pocetne.remove(klauz)
+            break
+    if res in resolvents:
+        return "visited"
+    resolvents.add(res)
+    return res
+
+def POSTUPAK(SoS,pocetne,ciljna_klauzula,sve,flag):
+    combinations, rod, tata = {}, {}, {}
+
+    for s in SoS:
+        rod[s]=""
+        for u in pocetne:
+            combinations[u+","+s]=False
+    ulazne = pocetne.copy()
+    pocetne_komb = dict(combinations)
+    resolvents = set()
+    while 1:
+
+        a,b = selectClauses(combinations)
+
+        if a == "" and b == "":
+            print("[CONCLUSION]: "+ciljna_klauzula+" is unknown")
+            return 0
+        res = resolve(a,b,pocetne,resolvents)
+
+        if res == "tautology":
+            continue
+        if res == "visited":
+            continue
+
+        tata[res] = b
+        rod[res] = a+","+b
+        visited_rod = {}
+        visited_rod[a+","+b]=False
+
+        if res == "NIL":
+            if flag != "cooking":
+                tata_je = tata[res]
+                rodit = rod[tata_je]
+                put = []
+                count = len(sve)
+                visited = {}
+
+                put.append(res+" ("+rod[res]+")")
+                visited[res+" ("+rod[res]+")"] = True
+                spl = rod[res].split(",")
+                if spl[0] not in ulazne:
+                    put.append(spl[0]+" ("+rod[spl[0]]+")")
+                while True:
+                    spl = rod
+                    visited[tata_je+" ("+rodit+")"] = True
+                    put.append(tata_je+" ("+rodit+")")
+                    if tata_je not in tata:
+                        break
+                    tata_je = tata[tata_je]
+                    if rod[tata_je]=="":
+                        break
+                    rodit = rod[tata_je]
+                    if (tata_je+" ("+rodit+")") in visited:
+                        if visited[tata_je+" ("+rodit+")"]:
+                            break
+                put.reverse()
+                for p in put:
+                    count = count+1
+                    print(str(count)+". "+p)
+            print("===============")
+            print("[CONCLUSION]: "+ciljna_klauzula+" is true")
+            return 1
+        for u in pocetne:
+            if (u+","+res) not in combinations:
+                combinations[u+","+res]=False
+
+        if len(combinations) == 0:
+            print("[CONCLUSION]: "+ciljna_klauzula+" is unknown")
+            return 0
+        SoS.append(res)
+        oldRes = res
+        pocetne.add(oldRes)
+
+def RESOLUTION(klauzule, ciljna_klauzula):
+    SoS = []
+    ciljne = klauzule[-1].split(" v ")
+    del klauzule[-1]
+    pocetne = set(klauzule)
+    for c in ciljne:
+        if "~" in c:
+            temp = c.lstrip("~")
+        else:
+            temp = "~"+c
+        SoS.append(temp)
+    ul_cilj = SoS
+    sve = klauzule + SoS
+
+    for klauzula in sve:
+        print(str(sve.index(klauzula)+1)+". "+klauzula)
+    print("===============")
+
+    POSTUPAK(SoS,pocetne,ciljna_klauzula,sve,"resolution")
+
+def COOKING(klauzule, naredbe):
+
+    pocetne = set(klauzule)
+    SoS = []
+    ciljna_klauzula = ""
+    print("Constructed with knowledge:")
+    print(*klauzule, sep="\n")
+    print()
+    for naredba in naredbe:
+        count=0
+        pocetne = klauzule
+        SoS = []
+        print("User's command: "+naredba)
+
+        znak = naredba[-1]
+        naredba = naredba[:-1]
+        klauzula = naredba.rstrip()
+
+        if znak == "?":
+            ciljna_klauzula = klauzula
+            ciljne = ciljna_klauzula.split(" v ")
+            for c in ciljne:
+                if "~" in c:
+                    temp = c.lstrip("~")
+                else:
+                    temp = "~"+c
+                SoS.append(temp)
+
+            for klauzula in klauzule:
+                count = count+1
+                print(str(klauzule.index(klauzula)+1)+". "+klauzula)
+            print(str(count+1)+". "+"~"+ciljna_klauzula)
+            print("===============")
+            POSTUPAK(SoS,set(pocetne),ciljna_klauzula,{},"cooking")
+        if znak == "-":
+            if klauzula in klauzule:
+                klauzule.remove(klauzula)
+                print("removed "+klauzula)
+            else:
+                print("Greška: Klauzula ne postoji u bazi znanja.")
+        if znak == "+":
+            print("added "+klauzula)
+            klauzule.append(klauzula)
+        print()
+
+
+
+if sys.argv[1] == "resolution":
+    if sys.argv[2]:
+        filename_klauzule = sys.argv[2]
+if sys.argv[1] == "cooking":
+    if sys.argv[2]:
+        filename_klauzule = sys.argv[2]
+    if sys.argv[3]:
+        filename_naredbe = sys.argv[3]
+        naredbe_file = open(filename_naredbe, encoding="utf8")
+        naredbe = []
+        for naredba in naredbe_file:
+            naredba = naredba.rstrip()
+            naredba = naredba.lower()
+            naredbe.append(naredba)
+klauzule_file = open(filename_klauzule, encoding="utf8")
+
+klauzule = []
+for klauzula in klauzule_file:
+    klauzula = klauzula.rstrip()
+
+    if "#" not in klauzula:
+        klauzula = klauzula.lower()
+        klauzule.append(klauzula)
+        literali = klauzula.split(" v ")
+
+ciljna_klauzula = klauzule[-1]
+klauzule[-1] = ciljna_klauzula
+
+if sys.argv[1] == "resolution":
+    RESOLUTION(klauzule, ciljna_klauzula)
+elif sys.argv[1] == "cooking":
+    COOKING(klauzule,naredbe)
+else:
+    exit(1)
+
