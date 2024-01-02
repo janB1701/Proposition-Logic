@@ -13,4 +13,17 @@ The program reads a file containing clauses in propositional logic, with each li
 
 ## Usage
 To use this program, compile and run it with Java, providing the command "resolution" followed by the path to the text file containing the clauses:
+The file should contain clauses formatted as disjunctions of literals, with each clause on a separate line.
 
+## File Format
+The input file should contain propositional logic clauses, with each line representing a clause. Literals in a clause should be separated by " v ". For example:
+A v B
+~A v C
+C v ~B
+
+
+## Sample Output
+The program outputs the process of resolving clauses and the conclusion it reaches. If it finds a contradiction or successfully proves the target statement, it outputs the result.
+
+## Contributing
+Contributions to enhance the functionality, improve efficiency, or fix bugs are welcome. Please feel free to fork this repository and submit pull requests.
